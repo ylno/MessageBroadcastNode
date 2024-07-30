@@ -2,8 +2,8 @@ import { Telegraf, Context, Markup, TelegramError } from "telegraf";
 import winston from "winston";
 import { DataService } from "./DataService";
 import eventBus, { EventBus } from "./EventBus";
-import { ChatDAO } from "./ChatDao";
 import { callbackQuery, message } from "telegraf/filters";
+import { Channel } from "./ChatDao";
 
 class Emoji {
   static CROSS_MARK = "❌";
@@ -85,7 +85,21 @@ export class KonvBot {
     console.log("incoming", text);
     const user = this.dataService.getChatDao().getUser(String(message.from.id));
 
-    if (text.toLowerCase() === "help" || text === "/start") {
+    const waitfor = await this.dataService
+      .getChatDao()
+      .getAndDeleteWaitFor(chatId);
+    console.log("found waitfor", waitfor);
+
+    if (waitfor && waitfor == "channelname") {
+      console.log("lkjaslkdjs");
+      const channel = await this.dataService
+        .getChatDao()
+        .createChannel(user, text);
+      this.logger.debug("chat: ", channel);
+      this.dataService.getChatDao().persistChannel(channel);
+
+      ctx.reply("channel " + channel.name + " created and activated here");
+    } else if (text.toLowerCase() === "help" || text === "/start") {
       await ctx.reply(this.getHelpText(), {
         parse_mode: "HTML",
         ...Markup.keyboard(this.getMainMenuKeyboard()).resize(),

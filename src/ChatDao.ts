@@ -2,7 +2,7 @@ import Redis from "ioredis";
 import { v4 as uuidv4 } from "uuid";
 import winston from "winston";
 
-class User {
+export class User {
   id: string;
 
   constructor(id: string) {
@@ -10,7 +10,7 @@ class User {
   }
 }
 
-class Channel {
+export class Channel {
   id: string;
   name: string;
   messageCount: number = 0;
@@ -94,6 +94,7 @@ export class ChatDAO {
 
   async persistChannel(channel: Channel): Promise<void> {
     const channelID = channel.id;
+
     const channelData: Record<string, string> = {
       name: channel.name,
       messagecount: channel.messageCount.toString(),
