@@ -3,7 +3,11 @@ import winston from "winston";
 import { DataService } from "./DataService";
 import eventBus, { EventBus } from "./EventBus";
 import { callbackQuery, message } from "telegraf/filters";
-import { Channel } from "./ChatDao";
+import { Channel, User } from "./ChatDao";
+import {
+  InlineKeyboardButton,
+  InlineKeyboardMarkup,
+} from "telegraf/typings/core/types/typegram";
 
 class Emoji {
   static CROSS_MARK = "❌";
@@ -104,13 +108,36 @@ export class KonvBot {
         parse_mode: "HTML",
         ...Markup.keyboard(this.getMainMenuKeyboard()).resize(),
       });
-    } else if (text === "LIST") {
-      // Implement list logic
+    } else if (text.toUpperCase() === "LIST") {
+      const channelsForUser = await this.dataService
+        .getChatDao()
+        .getChannelsForUser(user);
+
+      let answer = `Channellist for ${user.id}\n`;
+
+      channelsForUser.map((channel) => {
+        answer += channel.name + "\n";
+        answer += " ID: " + channel.id + "\n";
+        answer += " name: " + channel.name + "\n";
+        answer += " messages: " + channel.messageCount + "\n";
+        answer +=
+          " test channel: https://message.frankl.info/test?channelid=" +
+          channel.id +
+          "\n";
+        answer +=
+          "or use simple link to send receive a message: https://message.frankl.info/message/" +
+          channel.id +
+          "/This%20is%20a%20example%20message%20to%20telegram\n";
+      });
+      ctx.reply(answer, { parse_mode: "Markdown" });
     } else if (text.toLowerCase() === "new channel") {
       ctx.reply("Give me a name for the channel");
       this.dataService.getChatDao().setWaitFor(chatId, "channelname");
     } else if (text === "Channels") {
-      // Implement channels logic
+      ctx.reply(
+        "Choose channel to edit",
+        await this.getChannellistKeyboard(chatId, user, "EDITCHANNEL"),
+      );
     } else if (text === "ACTIVATE") {
       // Implement activate logic
     } else if (text.toLowerCase() === "/stats") {
@@ -171,5 +198,37 @@ export class KonvBot {
       parts.push(message.substring(i, i + length));
     }
     return parts;
+  }
+
+  async getChannellistKeyboard(chatId: string, user: User, action: string) {
+    const channels = await this.dataService
+      .getChatDao()
+      .getChannelsForUser(user);
+    const rows: InlineKeyboardButton[][] = [];
+    let row: InlineKeyboardButton[] = [];
+
+    let counter = 0;
+    for (const channel of channels) {
+      const emoji = channel.hasTarget(chatId) ? "❌" : "";
+
+      const inlineKeyboardButton = Markup.button.callback(
+        `${channel.name} ${emoji}`,
+        `${action}/${channel.id}`,
+      );
+
+      row.push(inlineKeyboardButton);
+      counter++;
+      if (counter === 4) {
+        rows.push(row);
+        row = [];
+        counter = 0;
+      }
+    }
+
+    if (counter !== 0) {
+      rows.push(row);
+    }
+
+    return Markup.inlineKeyboard(rows);
   }
 }
