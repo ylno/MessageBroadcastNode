@@ -1,21 +1,21 @@
-import {ChatDAO} from "./ChatDao";
+import { ChatDAO } from "./ChatDao";
 
 export class DataService {
-	private chatDao: ChatDAO;
+  private chatDao: ChatDAO;
 
-	constructor(chatDao: ChatDAO) {
-		this.chatDao = chatDao;
-	}
+  constructor(chatDao: ChatDAO) {
+    this.chatDao = chatDao;
+  }
 
-	getChatDao(): ChatDAO {
-		return this.chatDao;
-	}
+  getChatDao(): ChatDAO {
+    return this.chatDao;
+  }
 
-	increaseMessageCount(): void {
-		this.chatDao.increaseMessageCount();
-	}
+  increaseMessageCount(): void {
+    this.chatDao.increaseMessageCount();
+  }
 
-	async getMessageCount(): Promise<string> {
-		return this.chatDao.getMessageCount();
-	}
+  async getMessageCount(): Promise<string> {
+    return this.chatDao.getMessageCount();
+  }
 }
