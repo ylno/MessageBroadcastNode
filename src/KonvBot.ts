@@ -1,4 +1,10 @@
-import { Telegraf, Context, Markup, TelegramError } from "telegraf";
+import {
+  Telegraf,
+  Context,
+  Markup,
+  TelegramError,
+  NarrowedContext,
+} from "telegraf";
 import winston from "winston";
 import { DataService } from "./DataService";
 import eventBus, { EventBus } from "./EventBus";
@@ -50,14 +56,41 @@ export class KonvBot {
     eventBus.on("messageEvent", this.messageHandler.bind(this));
 
     this.bot.on(message("text"), (ctx) => this.chatMessage(ctx));
-    this.bot.on(callbackQuery(), (ctx) => this.callbackQuery(ctx));
+    // this.bot.on(callbackQuery(), (ctx) => this.callbackQuery(ctx));
+    this.bot.action(/EDITCHANNEL\/(.+)/, (ctx) => {
+      this.editChannelAction(ctx.match.input, ctx);
+    });
     this.bot.launch();
+  }
+
+  async editChannelAction(input: string, ctx: Context) {
+    const data = input;
+    const channelId = data.split("/")[1];
+    console.log(channelId); // Ausgabe der extrahierten Channel-ID
+
+    const channel = await this.dataService.getChatDao().getChannel(channelId);
+    const text = `what do you want to do with channel ${channel.name}`;
+
+    const inlineKeyboardMarkup = Markup.inlineKeyboard([
+      [
+        Markup.button.callback("Info", `INFOCHANNEL/${channelId}`),
+        Markup.button.callback("Activate", `ACTIVATECHANNEL/${channelId}`),
+        Markup.button.callback("Delete", `DELETECHANNEL/${channelId}`),
+      ],
+    ]);
+
+    await ctx.reply(text, inlineKeyboardMarkup);
+
+    // Antwort auf die Callback-Query
+    ctx.answerCbQuery("Channel edited");
+    ctx.reply(`Channel ID to edit: ${channelId}`);
   }
 
   async callbackQuery(ctx: Context) {
     const callbackQuery = ctx.callbackQuery;
     console.log("callbackquery", callbackQuery);
     const command = ctx.text;
+    console.log("command", command);
     if (!command) {
       return;
     }
@@ -153,13 +186,13 @@ export class KonvBot {
   private getHelpText(): string {
     return `Use this bot to receive telegram messages from anywhere. Receive your server-monitoring messages in telegram, filled out web-forms etc. All you need is to send a post message.\n\n
         A channel is an input channel for messages. You can have many channels, they are bound to your telegram user.
-        
+
         Activate a channel in any chat to receive messages. The @KonvBot must be included in this channel. One channel can be activated in many chats. Messages to this channel will be broadcasted to every chat it is activated in.\n\n
         Messages to a channel can be sent with a post-message from anywhere. Structure of the post message: '{"target": "channel-id","message": "{your message}"}'
-        
+
         channel-id: the channel-id, get it from your channel-list
         {your message}: send the text that should be sent to telegram.
-        
+
         curl-example:\ncurl -H "Content-Type: application/json" -X POST -d '{"target": "9288ec3b-c32c-482d-b9a1-06b08df9aaba","message": "This is a telegram message"}' https://message.frankl.info/message\n\n
         Version: ${KonvBot.VERSION}`;
   }
