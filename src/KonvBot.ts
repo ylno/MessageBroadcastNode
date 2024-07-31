@@ -60,7 +60,56 @@ export class KonvBot {
     this.bot.action(/EDITCHANNEL\/(.+)/, (ctx) => {
       this.editChannelAction(ctx.match.input, ctx);
     });
+
+    this.bot.action(/ACTIVATECHANNEL\/(.+)/, (ctx) => {
+      this.activateChannel(ctx.match[1], ctx);
+    });
+
     this.bot.launch();
+  }
+
+  async activateChannel(target: string, ctx: Context) {
+    const callbackQuery = ctx.callbackQuery;
+    const currentChatId = ctx.callbackQuery?.message?.chat.id;
+    if (!callbackQuery) return;
+    console.log("currentChatId", currentChatId);
+
+    const user = this.dataService
+      .getChatDao()
+      .getUser(callbackQuery.from.id.toString());
+    console.log(`User: ${user.id}`);
+
+    const channels = await this.dataService
+      .getChatDao()
+      .getChannelsForUser(user);
+    let foundChannel = false;
+
+    if (!currentChatId) {
+      ctx.reply("unable to get current chat");
+      return;
+    }
+
+    for (const channel of channels) {
+      if (channel.id.toString() === target) {
+        foundChannel = true;
+        if (!channel.hasTarget(currentChatId.toString())) {
+          channel.addTarget(currentChatId.toString());
+          this.dataService.getChatDao().persistChannel(channel);
+          await ctx.answerCbQuery("Channel added");
+        } else {
+          channel.removeTarget(currentChatId.toString());
+          this.dataService.getChatDao().persistChannel(channel);
+          await ctx.answerCbQuery("Channel removed!");
+        }
+        console.log(
+          `Target ${callbackQuery.message?.chat.id} added to channel ${channel.id}`,
+        );
+      }
+    }
+
+    if (!foundChannel) {
+      await ctx.answerCbQuery("Channel not found");
+    }
   }
 
   async editChannelAction(input: string, ctx: Context) {
