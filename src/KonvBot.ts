@@ -65,7 +65,26 @@ export class KonvBot {
       this.activateChannel(ctx.match[1], ctx);
     });
 
+    this.bot.action(/DELETECHANNEL\/(.+)/, (ctx) => {
+      this.deleteChannel(ctx.match[1], ctx);
+    });
+
     this.bot.launch();
+  }
+
+  async deleteChannel(target: string, ctx: Context) {
+    const callbackQuery = ctx.callbackQuery;
+
+    if (!callbackQuery) return;
+
+    const user = this.dataService
+      .getChatDao()
+      .getUser(callbackQuery.from.id.toString());
+    const channel = await this.dataService.getChatDao().getChannel(target);
+
+    this.dataService.getChatDao().deleteChannel(user, channel);
+
+    await ctx.reply("Channel deleted");
   }
 
   async activateChannel(target: string, ctx: Context) {
