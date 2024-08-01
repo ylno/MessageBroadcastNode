@@ -1,23 +1,10 @@
-import {
-  Telegraf,
-  Context,
-  Markup,
-  TelegramError,
-  NarrowedContext,
-} from "telegraf";
+import { Context, Markup, Telegraf } from "telegraf";
 import winston from "winston";
 import { DataService } from "./DataService";
-import eventBus, { EventBus } from "./EventBus";
-import { callbackQuery, message } from "telegraf/filters";
+import { EventBus } from "./EventBus";
+import { message } from "telegraf/filters";
 import { Channel, User } from "./ChatDao";
-import {
-  InlineKeyboardButton,
-  InlineKeyboardMarkup,
-} from "telegraf/typings/core/types/typegram";
-
-class Emoji {
-  static CROSS_MARK = "❌";
-}
+import { InlineKeyboardButton } from "telegraf/typings/core/types/typegram";
 
 export interface MessageEvent {
   channel: string;
@@ -52,8 +39,11 @@ export class KonvBot {
     this.bot.command("test", async (ctx) => {
       console.log("test", ctx);
     });
+    eventBus.onAny((event) => {
+      console.log("incoming event", event);
+    });
 
-    eventBus.on("messageEvent", this.messageHandler.bind(this));
+    eventBus.on("message", this.messageHandler.bind(this));
 
     this.bot.on(message("text"), (ctx) => this.chatMessage(ctx));
     // this.bot.on(callbackQuery(), (ctx) => this.callbackQuery(ctx));
@@ -69,7 +59,26 @@ export class KonvBot {
       this.deleteChannel(ctx.match[1], ctx);
     });
 
+    this.bot.action(/INFOCHANNEL\/(.+)/, (ctx) => {
+      this.infoChannel(ctx.match[1], ctx);
+    });
+
     this.bot.launch();
+  }
+
+  async infoChannel(target: string, ctx: Context) {
+    const callbackQuery = ctx.callbackQuery;
+
+    if (!callbackQuery) return;
+
+    const user = this.dataService
+      .getChatDao()
+      .getUser(callbackQuery.from.id.toString());
+    const channel = await this.dataService.getChatDao().getChannel(target);
+
+    const channelInfo = this.getChannelInfo(channel);
+
+    await ctx.reply(channelInfo);
   }
 
   async deleteChannel(target: string, ctx: Context) {
@@ -154,31 +163,6 @@ export class KonvBot {
     ctx.reply(`Channel ID to edit: ${channelId}`);
   }
 
-  async callbackQuery(ctx: Context) {
-    const callbackQuery = ctx.callbackQuery;
-    console.log("callbackquery", callbackQuery);
-    const command = ctx.text;
-    console.log("command", command);
-    if (!command) {
-      return;
-    }
-    // const command = callbackQuery;
-    console.log("callbackQuery", callbackQuery);
-    const [action, target] = command.split("/");
-
-    this.logger.debug(`data ${action} target ${target}`);
-
-    if (action === "ACTIVATECHANNEL") {
-      // Implement activation logic
-    } else if (action === "EDITCHANNEL") {
-      // Implement edit logic
-    } else if (action === "DELETECHANNEL") {
-      // Implement delete logic
-    } else if (action === "INFOCHANNEL") {
-      // Implement info logic
-    }
-  }
-
   async chatMessage(ctx: Context) {
     const message = ctx.message;
     if (!message) {
@@ -217,18 +201,7 @@ export class KonvBot {
       let answer = `Channellist for ${user.id}\n`;
 
       channelsForUser.map((channel) => {
-        answer += channel.name + "\n";
-        answer += " ID: " + channel.id + "\n";
-        answer += " name: " + channel.name + "\n";
-        answer += " messages: " + channel.messageCount + "\n";
-        answer +=
-          " test channel: https://message.frankl.info/test?channelid=" +
-          channel.id +
-          "\n";
-        answer +=
-          "or use simple link to send receive a message: https://message.frankl.info/message/" +
-          channel.id +
-          "/This%20is%20a%20example%20message%20to%20telegram\n";
+        answer += this.getChannelInfo(channel) + "\n";
       });
       ctx.reply(answer, { parse_mode: "Markdown" });
     } else if (text.toLowerCase() === "new channel") {
@@ -249,6 +222,22 @@ export class KonvBot {
         Markup.keyboard(this.getMainMenuKeyboard()).resize(),
       );
     }
+  }
+
+  getChannelInfo(channel: Channel): string {
+    let answer = channel.name + "\n";
+    answer += " ID: " + channel.id + "\n";
+    answer += " name: " + channel.name + "\n";
+    answer += " messages: " + channel.messageCount + "\n";
+    answer +=
+      " test channel: https://message.frankl.info/test?channelid=" +
+      channel.id +
+      "\n";
+    answer +=
+      "or use simple link to send receive a message: https://message.frankl.info/message/" +
+      channel.id +
+      "/This%20is%20a%20example%20message%20to%20telegram\n";
+    return answer;
   }
 
   private getHelpText(): string {
