@@ -5,11 +5,7 @@ import { EventBus } from "./EventBus";
 import { message } from "telegraf/filters";
 import { Channel, User } from "./ChatDao";
 import { InlineKeyboardButton } from "telegraf/typings/core/types/typegram";
-
-export interface MessageEvent {
-  channel: string;
-  message: string;
-}
+import { Message } from "./types";
 
 // Main Bot Class
 export class KonvBot {
@@ -43,7 +39,16 @@ export class KonvBot {
       console.log("incoming event", event);
     });
 
-    eventBus.on("message", this.messageHandler.bind(this));
+    eventBus.on("message", (message: Message) => {
+      console.log("noice", message);
+      this.messageHandler(message)
+        .then(() => {
+          console.log("handler ready");
+        })
+        .catch((e) => {
+          console.log("error", e);
+        });
+    });
 
     this.bot.on(message("text"), (ctx) => this.chatMessage(ctx));
     // this.bot.on(callbackQuery(), (ctx) => this.callbackQuery(ctx));
@@ -258,19 +263,20 @@ export class KonvBot {
     return [["Help", "Channels", "New Channel"]];
   }
 
-  private async messageHandler(messageEvent: MessageEvent) {
-    this.logger.debug("received messageEvent", messageEvent);
+  async messageHandler(messageEvent: Message) {
+    console.log("-------received messageEvent", messageEvent);
 
     try {
       const channel = await this.dataService
         .getChatDao()
-        .getChannel(messageEvent.channel);
+        .getChannel(messageEvent.target);
       for (const target of channel.getTargetList()) {
         const messages = this.splitStringIntoParts(
           messageEvent.message,
           KonvBot.MAX_TELEGRAM_MESSAGE_SIZE,
         );
         for (const part of messages) {
+          console.log("target, part", target, part);
           await this.bot.telegram.sendMessage(target, part);
         }
       }

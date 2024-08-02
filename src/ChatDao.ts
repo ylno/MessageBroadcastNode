@@ -95,9 +95,11 @@ export class ChatDAO {
   async persistChannel(channel: Channel): Promise<void> {
     const channelID = channel.id;
 
-    const channelData: Record<string, string> = {
+    const channelData = {
+      id: channel.id,
       name: channel.name,
       messagecount: channel.messageCount.toString(),
+      targetlist: channel.targetList,
     };
     await this.redis.hmset(`${this.BOTKEY}.channel.${channelID}`, channelData);
     await this.redis.del(`${this.BOTKEY}.channeltarget.${channelID}`);

@@ -14,9 +14,8 @@ router.options("/message", async (ctx: Context) => {
 
 router.post("/message", async (ctx: Context) => {
     const message: Message = ctx.request.body as Message;
-    eventBus.emit("message", { target: message.target, message: message.message });
-
-    console.log(`post message to ${message.target}, message: ${message.message}`);
+    console.log(`API: post message to ${message.target}, message: ${message.message}`);
+    await eventBus.emit("message", { target: message.target, message: message.message });
     ctx.set("Access-Control-Allow-Origin", "*");
     ctx.set("Access-Control-Allow-Methods", "POST");
     ctx.set("Access-Control-Allow-Headers", "Content-Type");
