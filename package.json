@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^16.4.5",
     "eventemitter2": "^6.4.9",
     "ioredis": "^5.4.1",
     "koa": "^2.15.3",
