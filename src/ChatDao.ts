@@ -1,6 +1,5 @@
 import Redis from "ioredis";
 import { v4 as uuidv4 } from "uuid";
-import winston from "winston";
 
 export class User {
   id: string;
@@ -49,20 +48,12 @@ export class Channel {
 export class ChatDAO {
   private readonly BOTKEY = "konvbot";
   private redis: Redis;
-  private logger: winston.Logger;
 
   constructor(redisHost: string) {
     this.redis = new Redis(redisHost);
-    this.logger = winston.createLogger({
-      level: "debug",
-      format: winston.format.json(),
-      transports: [
-        new winston.transports.Console(),
-        new winston.transports.File({ filename: "chatdao.log" }),
-      ],
-    });
-    this.logger.debug("jedis init now");
-    this.logger.debug("jedis init", this.redis.toString());
+
+    console.log("jedis init now");
+    console.log("jedis init", this.redis.toString());
   }
 
   getUser(id: string): User {
@@ -99,7 +90,6 @@ export class ChatDAO {
       id: channel.id,
       name: channel.name,
       messagecount: channel.messageCount.toString(),
-      targetlist: channel.targetList,
     };
     await this.redis.hmset(`${this.BOTKEY}.channel.${channelID}`, channelData);
     await this.redis.del(`${this.BOTKEY}.channeltarget.${channelID}`);

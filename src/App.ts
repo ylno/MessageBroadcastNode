@@ -7,7 +7,8 @@ import { startRestServer } from "./rest/server";
 function main() {
   const botKey = "5333958735:AAHQ7LMmKvSbtWG4a0hkGbj_kDNBUid3_j0";
   const botName = "KonvBot";
-  const dataService = new DataService(new ChatDAO(""));
+  const redisHost = "";
+  const dataService = new DataService(new ChatDAO(redisHost));
   const konvBot = new KonvBot(eventBus, botKey, botName, dataService);
 
   startRestServer();

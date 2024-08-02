@@ -1,5 +1,4 @@
 import { Context, Markup, Telegraf } from "telegraf";
-import winston from "winston";
 import { DataService } from "./DataService";
 import { EventBus } from "./EventBus";
 import { message } from "telegraf/filters";
@@ -13,7 +12,6 @@ export class KonvBot {
   private static readonly VERSION = "1.1.1";
   private bot: Telegraf<Context>;
   private dataService: DataService;
-  private logger: winston.Logger;
 
   constructor(
     eventBus: EventBus,
@@ -23,20 +21,9 @@ export class KonvBot {
   ) {
     this.bot = new Telegraf(botKey);
     this.dataService = dataService;
-    this.logger = winston.createLogger({
-      level: "debug",
-      format: winston.format.json(),
-      transports: [
-        new winston.transports.Console(),
-        new winston.transports.File({ filename: "konvbot.log" }),
-      ],
-    });
 
     this.bot.command("test", async (ctx) => {
       console.log("test", ctx);
-    });
-    eventBus.onAny((event) => {
-      console.log("incoming event", event);
     });
 
     eventBus.on("message", (message: Message) => {
@@ -51,7 +38,7 @@ export class KonvBot {
     });
 
     this.bot.on(message("text"), (ctx) => this.chatMessage(ctx));
-    // this.bot.on(callbackQuery(), (ctx) => this.callbackQuery(ctx));
+
     this.bot.action(/EDITCHANNEL\/(.+)/, (ctx) => {
       this.editChannelAction(ctx.match.input, ctx);
     });
@@ -185,12 +172,12 @@ export class KonvBot {
     console.log("found waitfor", waitfor);
 
     if (waitfor && waitfor == "channelname") {
-      console.log("lkjaslkdjs");
       const channel = await this.dataService
         .getChatDao()
         .createChannel(user, text);
-      this.logger.debug("chat: ", channel);
-      this.dataService.getChatDao().persistChannel(channel);
+      console.log("chat: ", channel);
+      channel.addTarget(ctx.message.chat.id.toString());
+      await this.dataService.getChatDao().persistChannel(channel);
 
       ctx.reply("channel " + channel.name + " created and activated here");
     } else if (text.toLowerCase() === "help" || text === "/start") {
@@ -220,7 +207,7 @@ export class KonvBot {
     } else if (text === "ACTIVATE") {
       // Implement activate logic
     } else if (text.toLowerCase() === "/stats") {
-      // Implement stats logic
+      await ctx.reply(await this.dataService.getMessageCount());
     } else {
       await ctx.reply(
         "I did not understand that. Try HELP",
@@ -284,7 +271,7 @@ export class KonvBot {
       this.dataService.getChatDao().persistChannel(channel);
       this.dataService.increaseMessageCount();
     } catch (error) {
-      this.logger.error("Error processing messageEvent", error);
+      console.log("Error processing messageEvent", error);
     }
   }
 
