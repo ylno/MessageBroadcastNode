@@ -13,12 +13,7 @@ export class KonvBot {
   private bot: Telegraf<Context>;
   private dataService: DataService;
 
-  constructor(
-    eventBus: EventBus,
-    botKey: string,
-    botName: string,
-    dataService: DataService,
-  ) {
+  constructor(eventBus: EventBus, botKey: string, botName: string, dataService: DataService) {
     this.bot = new Telegraf(botKey);
     this.dataService = dataService;
 
@@ -63,9 +58,7 @@ export class KonvBot {
 
     if (!callbackQuery) return;
 
-    const user = this.dataService
-      .getChatDao()
-      .getUser(callbackQuery.from.id.toString());
+    const user = this.dataService.getChatDao().getUser(callbackQuery.from.id.toString());
     const channel = await this.dataService.getChatDao().getChannel(target);
 
     const channelInfo = this.getChannelInfo(channel);
@@ -78,9 +71,7 @@ export class KonvBot {
 
     if (!callbackQuery) return;
 
-    const user = this.dataService
-      .getChatDao()
-      .getUser(callbackQuery.from.id.toString());
+    const user = this.dataService.getChatDao().getUser(callbackQuery.from.id.toString());
     const channel = await this.dataService.getChatDao().getChannel(target);
 
     this.dataService.getChatDao().deleteChannel(user, channel);
@@ -94,14 +85,10 @@ export class KonvBot {
     if (!callbackQuery) return;
     console.log("currentChatId", currentChatId);
 
-    const user = this.dataService
-      .getChatDao()
-      .getUser(callbackQuery.from.id.toString());
+    const user = this.dataService.getChatDao().getUser(callbackQuery.from.id.toString());
     console.log(`User: ${user.id}`);
 
-    const channels = await this.dataService
-      .getChatDao()
-      .getChannelsForUser(user);
+    const channels = await this.dataService.getChatDao().getChannelsForUser(user);
     let foundChannel = false;
 
     if (!currentChatId) {
@@ -121,9 +108,7 @@ export class KonvBot {
           this.dataService.getChatDao().persistChannel(channel);
           await ctx.answerCbQuery("Channel removed!");
         }
-        console.log(
-          `Target ${callbackQuery.message?.chat.id} added to channel ${channel.id}`,
-        );
+        console.log(`Target ${callbackQuery.message?.chat.id} added to channel ${channel.id}`);
       }
     }
 
@@ -166,15 +151,11 @@ export class KonvBot {
     console.log("incoming", text);
     const user = this.dataService.getChatDao().getUser(String(message.from.id));
 
-    const waitfor = await this.dataService
-      .getChatDao()
-      .getAndDeleteWaitFor(chatId);
+    const waitfor = await this.dataService.getChatDao().getAndDeleteWaitFor(chatId);
     console.log("found waitfor", waitfor);
 
     if (waitfor && waitfor == "channelname") {
-      const channel = await this.dataService
-        .getChatDao()
-        .createChannel(user, text);
+      const channel = await this.dataService.getChatDao().createChannel(user, text);
       console.log("chat: ", channel);
       channel.addTarget(ctx.message.chat.id.toString());
       await this.dataService.getChatDao().persistChannel(channel);
@@ -186,9 +167,7 @@ export class KonvBot {
         ...Markup.keyboard(this.getMainMenuKeyboard()).resize(),
       });
     } else if (text.toUpperCase() === "LIST") {
-      const channelsForUser = await this.dataService
-        .getChatDao()
-        .getChannelsForUser(user);
+      const channelsForUser = await this.dataService.getChatDao().getChannelsForUser(user);
 
       let answer = `Channellist for ${user.id}\n`;
 
@@ -200,19 +179,13 @@ export class KonvBot {
       ctx.reply("Give me a name for the channel");
       this.dataService.getChatDao().setWaitFor(chatId, "channelname");
     } else if (text === "Channels") {
-      ctx.reply(
-        "Choose channel to edit",
-        await this.getChannellistKeyboard(chatId, user, "EDITCHANNEL"),
-      );
+      ctx.reply("Choose channel to edit", await this.getChannellistKeyboard(chatId, user, "EDITCHANNEL"));
     } else if (text === "ACTIVATE") {
       // Implement activate logic
     } else if (text.toLowerCase() === "/stats") {
       await ctx.reply(await this.dataService.getMessageCount());
     } else {
-      await ctx.reply(
-        "I did not understand that. Try HELP",
-        Markup.keyboard(this.getMainMenuKeyboard()).resize(),
-      );
+      await ctx.reply("I did not understand that. Try HELP", Markup.keyboard(this.getMainMenuKeyboard()).resize());
     }
   }
 
@@ -221,10 +194,7 @@ export class KonvBot {
     answer += " ID: " + channel.id + "\n";
     answer += " name: " + channel.name + "\n";
     answer += " messages: " + channel.messageCount + "\n";
-    answer +=
-      " test channel: https://message.frankl.info/test?channelid=" +
-      channel.id +
-      "\n";
+    answer += " test channel: https://message.frankl.info/test?channelid=" + channel.id + "\n";
     answer +=
       "or use simple link to send receive a message: https://message.frankl.info/message/" +
       channel.id +
@@ -254,14 +224,9 @@ export class KonvBot {
     console.log("-------received messageEvent", messageEvent);
 
     try {
-      const channel = await this.dataService
-        .getChatDao()
-        .getChannel(messageEvent.target);
+      const channel = await this.dataService.getChatDao().getChannel(messageEvent.target);
       for (const target of channel.getTargetList()) {
-        const messages = this.splitStringIntoParts(
-          messageEvent.message,
-          KonvBot.MAX_TELEGRAM_MESSAGE_SIZE,
-        );
+        const messages = this.splitStringIntoParts(messageEvent.message, KonvBot.MAX_TELEGRAM_MESSAGE_SIZE);
         for (const part of messages) {
           console.log("target, part", target, part);
           await this.bot.telegram.sendMessage(target, part);
@@ -275,7 +240,7 @@ export class KonvBot {
     }
   }
 
-  private splitStringIntoParts(message: string, length: number): string[] {
+  splitStringIntoParts(message: string, length: number): string[] {
     const parts: string[] = [];
     for (let i = 0; i < message.length; i += length) {
       parts.push(message.substring(i, i + length));
@@ -284,9 +249,7 @@ export class KonvBot {
   }
 
   async getChannellistKeyboard(chatId: string, user: User, action: string) {
-    const channels = await this.dataService
-      .getChatDao()
-      .getChannelsForUser(user);
+    const channels = await this.dataService.getChatDao().getChannelsForUser(user);
     const rows: InlineKeyboardButton[][] = [];
     let row: InlineKeyboardButton[] = [];
 
@@ -294,10 +257,7 @@ export class KonvBot {
     for (const channel of channels) {
       const emoji = channel.hasTarget(chatId) ? "❌" : "";
 
-      const inlineKeyboardButton = Markup.button.callback(
-        `${channel.name} ${emoji}`,
-        `${action}/${channel.id}`,
-      );
+      const inlineKeyboardButton = Markup.button.callback(`${channel.name} ${emoji}`, `${action}/${channel.id}`);
 
       row.push(inlineKeyboardButton);
       counter++;

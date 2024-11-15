@@ -21,7 +21,9 @@ export class Channel {
   }
 
   addTarget(chatId: string) {
-    this.targetList.push(chatId);
+    if (!this.hasTarget(chatId)) {
+      this.targetList.push(chatId);
+    }
   }
 
   removeTarget(chatId: string) {
@@ -93,35 +95,24 @@ export class ChatDAO {
     };
     await this.redis.hmset(`${this.BOTKEY}.channel.${channelID}`, channelData);
     await this.redis.del(`${this.BOTKEY}.channeltarget.${channelID}`);
+
     for (const target of channel.getTargetList()) {
-      await this.redis.lpush(
-        `${this.BOTKEY}.channeltarget.${channelID}`,
-        target,
-      );
+      await this.redis.lpush(`${this.BOTKEY}.channeltarget.${channelID}`, target);
     }
   }
 
   async persistUserChannel(user: User, channel: Channel): Promise<void> {
     const channelID = channel.id;
     const channelsForUser = await this.getChannelsForUser(user);
-    const present = channelsForUser.some(
-      (storedChannel) => storedChannel.id === channelID,
-    );
+    const present = channelsForUser.some((storedChannel) => storedChannel.id === channelID);
     if (!present) {
-      await this.redis.lpush(
-        `${this.BOTKEY}.user.${user.id}.channellist`,
-        channelID,
-      );
+      await this.redis.lpush(`${this.BOTKEY}.user.${user.id}.channellist`, channelID);
     }
     await this.persistChannel(channel);
   }
 
   async getChannelsForUser(user: User): Promise<Channel[]> {
-    const channelIds = await this.redis.lrange(
-      `${this.BOTKEY}.user.${user.id}.channellist`,
-      0,
-      100,
-    );
+    const channelIds = await this.redis.lrange(`${this.BOTKEY}.user.${user.id}.channellist`, 0, 100);
     const channels: Channel[] = [];
     for (const channelId of channelIds) {
       const channel = await this.getChannel(channelId);
@@ -131,16 +122,10 @@ export class ChatDAO {
   }
 
   async getChannel(channelId: string): Promise<Channel> {
-    const channelData = await this.redis.hgetall(
-      `${this.BOTKEY}.channel.${channelId}`,
-    );
+    const channelData = await this.redis.hgetall(`${this.BOTKEY}.channel.${channelId}`);
     const channel = new Channel(channelId, channelData.name);
     channel.messageCount = parseInt(channelData.messagecount, 10) || 0;
-    const targetList = await this.redis.lrange(
-      `${this.BOTKEY}.channeltarget.${channelId}`,
-      0,
-      100,
-    );
+    const targetList = await this.redis.lrange(`${this.BOTKEY}.channeltarget.${channelId}`, 0, 100);
     for (const target of targetList) {
       channel.addTarget(target);
     }
@@ -152,11 +137,7 @@ export class ChatDAO {
   }
 
   async deleteChannel(user: User, channel: Channel): Promise<void> {
-    await this.redis.lrem(
-      `${this.BOTKEY}.user.${user.id}.channellist`,
-      0,
-      channel.id,
-    );
+    await this.redis.lrem(`${this.BOTKEY}.user.${user.id}.channellist`, 0, channel.id);
     await this.redis.del(`${this.BOTKEY}.channel.${channel.id}`);
     await this.redis.del(`${this.BOTKEY}.channeltarget.${channel.id}`);
   }
