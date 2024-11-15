@@ -13,7 +13,7 @@ app.use(router.allowedMethods());
 const port = 8000;
 
 export function startRestServer() {
-    app.listen(port, () => {
-        console.log(`Server running on port ${port}`);
-    });
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
 }
