@@ -225,6 +225,7 @@ export class KonvBot {
 
     try {
       const channel = await this.dataService.getChatDao().getChannel(messageEvent.target);
+      console.log("found channel and target list length", channel, channel.targetList.length);
       for (const target of channel.getTargetList()) {
         const messages = this.splitStringIntoParts(messageEvent.message, KonvBot.MAX_TELEGRAM_MESSAGE_SIZE);
         for (const part of messages) {
